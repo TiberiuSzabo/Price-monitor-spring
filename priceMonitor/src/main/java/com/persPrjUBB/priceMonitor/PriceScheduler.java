@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import java.util.Arrays;
 import java.util.List;
 
-@Component // <--- Componentă a sistemului (Spring o va detecta automat)
+@Component
 public class PriceScheduler {
 
     @Autowired
@@ -16,17 +16,15 @@ public class PriceScheduler {
     @Autowired
     private ProductRepository productRepository;
 
-    // Rulează la fiecare ora
     @Scheduled(fixedRate = 3600000)
     public void verificaPretulAutomat() {
-        // Iau toate produsele pe care le am deja în DB
         List<Product> produseDeMonitorizat = productRepository.findAll();
 
         System.out.println("🚀 [AUTO] Scanare pornită pentru " + produseDeMonitorizat.size() + " produse...");
 
         for (Product p : produseDeMonitorizat) {
             try {
-                Thread.sleep(5000); // Pauză de 5 secunde (mai safe)
+                Thread.sleep(5000);
 
                 Product updatedInfo = scraperService.scrapeProduct(p.getUrl());
 

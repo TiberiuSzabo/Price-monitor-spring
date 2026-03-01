@@ -21,7 +21,6 @@ public class ScraperService {
             Element titleEl = doc.select("h1.page-title").first();
             Element priceEl = doc.select(".product-new-price").first();
 
-            //creez obiectul folosind constr. gol si settere (de la lombok)
             Product product = new Product();
             product.setUrl(url);
 
@@ -51,8 +50,7 @@ public class ScraperService {
                     .userAgent("Mozilla/5.0")
                     .get();
 
-            // Selectorul pentru link-urile produselor din pagina de search eMAG
-            // De obicei, titlurile sunt în tag-uri <a> cu clasa "card-v2-title"
+
             Elements links = doc.select("a.card-v2-title");
 
             for (Element link : links) {

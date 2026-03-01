@@ -9,25 +9,23 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Optional;
 
-@RestController //anunta Spring: "Asta e ușa prin care intră userii de pe net"
-@RequestMapping("/api") //toate comenzile cu /api ___
+@RestController
+@RequestMapping("/api")
 public class ScraperController {
-    @Autowired //aduce serviceul aici
+    @Autowired
     private ScraperService scraperService;
 
     @Autowired
-    private ProductRepository productRepository; //"bibliotecaru"
+    private ProductRepository productRepository;
 
     @GetMapping("/scrape")
     public Product scrape(@RequestParam String url) {
         Product produsNou = scraperService.scrapeProduct(url);
 
         if (produsNou != null) {
-            // Verificăm dacă URL-ul e deja în DB
             Optional<Product> produsExistent = productRepository.findByUrl(url);
 
             if (produsExistent.isPresent()) {
-                // Dacă există, luăm obiectul vechi și îi punem datele noi
                 Product p = produsExistent.get();
                 p.setPrice(produsNou.getPrice());
                 p.setTitle(produsNou.getTitle());
@@ -35,7 +33,6 @@ public class ScraperController {
                 System.out.println("🔄 Update preț pentru: " + p.getTitle());
                 return p;
             } else {
-                // Dacă nu există, îl salvăm de la zero
                 productRepository.save(produsNou);
                 System.out.println("✅ Produs nou salvat!");
                 return produsNou;
@@ -61,7 +58,6 @@ public class ScraperController {
 
     @GetMapping("/history")
     public List<Product> getAllProducts() {
-        // Scoatem tot ce avem în baza de date
         return productRepository.findAll();
     }
 }
