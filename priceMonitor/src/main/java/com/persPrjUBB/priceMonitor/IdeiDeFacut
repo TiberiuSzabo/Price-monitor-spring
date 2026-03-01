@@ -1,7 +1,6 @@
-Ce ai mai putea adăuga:
-
+Ce as mai putea adăuga:
 1 Bază de date reală (PostgreSQL/MySQL): Ca să rămână datele salvate și după restart.
 
 2 Notificări pe Email: Să primesc mail când preț_nou < 4000 RON. (Se face cu JavaMailSender).
 
-3 Eroare mai elegantă: Dacă eMAG schimbă site-ul și nu mai gasesc clasa .product-new-price, aplicația să nu crape, ci să mi trimită o alertă "Vezi că s-a schimbat site-ul".
+3 Eroare mai elegantă: Dacă eMAG schimbă site-ul și nu mai găsesc clasa .product-new-price, aplicația să nu crape, ci să mi trimită o alertă "Vezi că s-a schimbat site-ul".
