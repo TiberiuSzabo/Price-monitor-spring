@@ -1,42 +1,57 @@
 package com.persPrjUBB.priceMonitor;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Component
 public class PriceScheduler {
 
-    @Autowired
-    private ScraperService scraperService;
+    private static final Logger log = LoggerFactory.getLogger(PriceScheduler.class);
 
-    @Autowired
-    private ProductRepository productRepository;
+    private final PriceService prices;
+    private final long delayBetweenRequestsMs;
 
-    @Scheduled(fixedRate = 3600000)
-    public void verificaPretulAutomat() {
-        List<Product> produseDeMonitorizat = productRepository.findAll();
+    public PriceScheduler(PriceService prices,
+                          @Value("${pricemonitor.delay-between-requests-ms:5000}") long delayBetweenRequestsMs) {
+        this.prices = prices;
+        this.delayBetweenRequestsMs = delayBetweenRequestsMs;
+    }
 
-        System.out.println("🚀 [AUTO] Scanare pornită pentru " + produseDeMonitorizat.size() + " produse...");
+    @Scheduled(initialDelayString = "${pricemonitor.check-interval-ms:3600000}",
+            fixedDelayString = "${pricemonitor.check-interval-ms:3600000}")
+    public void checkAll() {
+        List<Product> tracked = prices.all();
+        log.info("Checking prices for {} products", tracked.size());
 
-        for (Product p : produseDeMonitorizat) {
+        int failed = 0;
+        for (Product p : tracked) {
             try {
-                Thread.sleep(5000);
-
-                Product updatedInfo = scraperService.scrapeProduct(p.getUrl());
-
-                if (updatedInfo != null) {
-                    p.setPrice(updatedInfo.getPrice());
-                    p.setTitle(updatedInfo.getTitle());
-                    productRepository.save(p);
-                    System.out.println("✅ Update: " + p.getTitle() + " -> " + p.getPrice());
-                }
-            } catch (Exception e) {
-                System.err.println("❌ Eroare la produsul " + p.getUrl() + ": " + e.getMessage());
+                prices.refresh(p);
+            } catch (ScrapeException | IllegalArgumentException e) {
+                failed++;
+                log.warn("Could not check {}: {}", p.getUrl(), e.getMessage());
             }
+            if (!sleep(delayBetweenRequestsMs)) {
+                return;
+            }
+        }
+        if (failed > 0 && failed == tracked.size()) {
+            log.error("Every product failed this round - eMAG may have changed its markup or blocked the scraper");
+        }
+    }
+
+    private static boolean sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
         }
     }
 }
