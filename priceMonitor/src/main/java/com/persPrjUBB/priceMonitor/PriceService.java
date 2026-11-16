@@ -18,13 +18,15 @@ public class PriceService {
     private final ProductRepository products;
     private final PricePointRepository pricePoints;
     private final Clock clock;
+    private final ScrapeMetrics metrics;
 
     public PriceService(ScraperService scraper, ProductRepository products,
-                        PricePointRepository pricePoints, Clock clock) {
+                        PricePointRepository pricePoints, Clock clock, ScrapeMetrics metrics) {
         this.scraper = scraper;
         this.products = products;
         this.pricePoints = pricePoints;
         this.clock = clock;
+        this.metrics = metrics;
     }
 
     @Transactional
@@ -84,6 +86,7 @@ public class PriceService {
         pricePoints.save(new PricePoint(product, scraped.price(), now));
 
         if (previous != null && previous.doubleValue() != scraped.price()) {
+            metrics.priceChanged(previous, scraped.price());
             log.info("Price change for '{}': {} -> {} RON", product.getTitle(), previous, scraped.price());
         }
         return product;

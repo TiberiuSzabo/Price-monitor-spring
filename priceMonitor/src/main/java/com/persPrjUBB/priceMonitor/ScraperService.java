@@ -1,5 +1,6 @@
 package com.persPrjUBB.priceMonitor;
 
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.LinkedHashSet;
@@ -26,14 +28,22 @@ public class ScraperService {
     private static final Pattern JSON_LD_PRICE = Pattern.compile("\"price\"\\s*:\\s*\"?([0-9]+(?:\\.[0-9]+)?)\"?");
 
     private final int timeoutMs;
+    private final ScrapeMetrics metrics;
 
-    public ScraperService(@Value("${pricemonitor.http-timeout-ms:10000}") int timeoutMs) {
+    public ScraperService(@Value("${pricemonitor.http-timeout-ms:10000}") int timeoutMs, ScrapeMetrics metrics) {
         this.timeoutMs = timeoutMs;
+        this.metrics = metrics;
     }
 
     public ScrapedProduct scrapeProduct(String url) {
         String cleanUrl = normalizeUrl(url);
-        return parseProductPage(fetch(cleanUrl), cleanUrl);
+        metrics.productChecked();
+        try {
+            return parseProductPage(fetch(cleanUrl), cleanUrl);
+        } catch (ScrapeException e) {
+            metrics.scrapeFailed(e.getReason());
+            throw e;
+        }
     }
 
     public List<String> discoverProducts(String searchUrl) {
@@ -43,7 +53,12 @@ public class ScraperService {
     static ScrapedProduct parseProductPage(Document doc, String url) {
         Element titleEl = doc.selectFirst("h1.page-title");
         if (titleEl == null || titleEl.text().isBlank()) {
-            throw new ScrapeException("No product title on " + url + " - the page layout may have changed");
+            if (looksLikeBotChallenge(doc)) {
+                throw new ScrapeException(ScrapeException.Reason.BLOCKED,
+                        "Got a captcha page instead of " + url + " - the scraper is being blocked");
+            }
+            throw new ScrapeException(ScrapeException.Reason.PARSE_ERROR,
+                    "No product title on " + url + " - the page layout may have changed");
         }
 
         Double price = null;
@@ -58,7 +73,8 @@ public class ScraperService {
             price = priceFromJsonLd(doc);
         }
         if (price == null) {
-            throw new ScrapeException("No price on " + url + " - the page layout may have changed");
+            throw new ScrapeException(ScrapeException.Reason.PARSE_ERROR,
+                    "No price on " + url + " - the page layout may have changed");
         }
         return new ScrapedProduct(url, titleEl.text().trim(), price);
     }
@@ -103,6 +119,11 @@ public class ScraperService {
         }
     }
 
+    // an anti-bot challenge comes back as HTTP 200, so it has to be recognised from the markup
+    private static boolean looksLikeBotChallenge(Document doc) {
+        return doc.selectFirst("[id*=captcha], [class*=captcha], iframe[src*=captcha]") != null;
+    }
+
     private static Double priceFromJsonLd(Document doc) {
         for (Element script : doc.select("script[type=application/ld+json]")) {
             String json = script.data();
@@ -123,8 +144,18 @@ public class ScraperService {
                     .header("Accept-Language", "ro-RO,ro;q=0.9,en;q=0.8")
                     .timeout(timeoutMs)
                     .get();
+        } catch (SocketTimeoutException e) {
+            throw new ScrapeException(ScrapeException.Reason.TIMEOUT,
+                    "Timed out after " + timeoutMs + " ms fetching " + url, e);
+        } catch (HttpStatusException e) {
+            int status = e.getStatusCode();
+            ScrapeException.Reason reason = (status == 403 || status == 429)
+                    ? ScrapeException.Reason.BLOCKED
+                    : ScrapeException.Reason.OTHER;
+            throw new ScrapeException(reason, "HTTP " + status + " fetching " + url, e);
         } catch (IOException e) {
-            throw new ScrapeException("Could not fetch " + url + ": " + e.getMessage(), e);
+            throw new ScrapeException(ScrapeException.Reason.OTHER,
+                    "Could not fetch " + url + ": " + e.getMessage(), e);
         }
     }
 }
