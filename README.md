@@ -259,21 +259,16 @@ docker pull ghcr.io/tiberiuszabo/price-monitor-spring:latest
 
 ## Screenshots
 
-<!-- Add the images to docs/screenshots/ and uncomment the lines below. -->
+Both are the provisioned *Price Monitor* dashboard after tracking 10 real eMAG products and running
+10 scrape cycles one minute apart.
 
-| Screenshot | File to add |
-| --- | --- |
-| Grafana — *Price Monitor* dashboard | `docs/screenshots/grafana-dashboard.png` |
-| Prometheus — targets page with `price-monitor` UP | `docs/screenshots/prometheus-targets.png` |
-| Prometheus — alert rules | `docs/screenshots/prometheus-alerts.png` |
-| GitHub Actions — green pipeline run | `docs/screenshots/ci-pipeline.png` |
+![Grafana dashboard, Scraper row: tracked products, products checked, failure rate, price changes, scrape cycles and cycle duration](docs/screenshots/grafana-scraper-dashboard.png)
 
-<!--
-![Grafana dashboard](docs/screenshots/grafana-dashboard.png)
-![Prometheus targets](docs/screenshots/prometheus-targets.png)
-![Prometheus alerts](docs/screenshots/prometheus-alerts.png)
-![CI pipeline](docs/screenshots/ci-pipeline.png)
--->
+*Scraper row — 10 tracked products, 110 checks with a 0% failure rate, and each full cycle taking about 53 seconds.*
+
+![Grafana dashboard, HTTP API and JVM rows: request rate, latency percentiles, heap and non-heap memory, GC pauses](docs/screenshots/grafana-jvm-http.png)
+
+*HTTP API and JVM rows — request rate and latency percentiles per endpoint, heap usage against the 384 MiB limit, and GC pause time.*
 
 ## Next
 
