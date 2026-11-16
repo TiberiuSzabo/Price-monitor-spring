@@ -7,8 +7,8 @@ WORKDIR /workspace
 COPY pom.xml .
 RUN mvn -B -q dependency:go-offline
 COPY src src
-# Tests run in CI before the image is built, not inside the image build.
-RUN mvn -B -q -DskipTests package
+# Tests run in CI before the image is built, so they are neither compiled nor run here.
+RUN mvn -B -q -Dmaven.test.skip=true package
 
 # ---- 2. extract: split the fat jar into Spring Boot layers ----
 FROM eclipse-temurin:21-jre-alpine AS extract

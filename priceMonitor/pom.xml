@@ -92,6 +92,15 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Local HTTP server that stands in for eMAG in tests. The standalone jar
+             shades its own Jetty/Jackson, so it cannot clash with Spring Boot's. -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>3.13.2</version>
+            <scope>test</scope>
+        </dependency>
+
 	</dependencies>
 
 	<build>

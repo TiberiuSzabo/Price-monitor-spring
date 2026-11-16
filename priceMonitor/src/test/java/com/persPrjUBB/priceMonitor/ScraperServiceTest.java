@@ -56,7 +56,44 @@ class ScraperServiceTest {
     void failsClearlyWhenLayoutChanged() {
         Document doc = Jsoup.parse("<h1 class=\"page-title\">Produs</h1><div>fara pret</div>");
 
-        assertThrows(ScrapeException.class, () -> ScraperService.parseProductPage(doc, URL));
+        ScrapeException e = assertThrows(ScrapeException.class, () -> ScraperService.parseProductPage(doc, URL));
+        assertEquals(ScrapeException.Reason.PARSE_ERROR, e.getReason());
+    }
+
+    @Test
+    void parsesSavedProductPage() {
+        Document doc = Jsoup.parse(Fixtures.html("emag-product.html"));
+
+        ScrapedProduct p = ScraperService.parseProductPage(doc, URL);
+
+        assertEquals("Laptop Test Book 15, Intel Core i5, 16GB, 512GB SSD", p.title());
+        assertEquals(3499.99, p.price(), 0.001, "the main price, not the bundle price that comes first");
+    }
+
+    @Test
+    void savedPageWithoutPriceIsAParseError() {
+        Document doc = Jsoup.parse(Fixtures.html("emag-product-no-price.html"));
+
+        ScrapeException e = assertThrows(ScrapeException.class, () -> ScraperService.parseProductPage(doc, URL));
+        assertEquals(ScrapeException.Reason.PARSE_ERROR, e.getReason());
+    }
+
+    @Test
+    void captchaPageIsRecognisedAsBlocked() {
+        Document doc = Jsoup.parse(Fixtures.html("emag-captcha.html"));
+
+        ScrapeException e = assertThrows(ScrapeException.class, () -> ScraperService.parseProductPage(doc, URL));
+        assertEquals(ScrapeException.Reason.BLOCKED, e.getReason());
+    }
+
+    @Test
+    void parsesSavedListingPage() {
+        Document doc = Jsoup.parse(Fixtures.html("emag-listing.html"));
+
+        assertEquals(List.of(
+                        "https://www.emag.ro/laptop-test-book-15/pd/TESTSKU1/",
+                        "https://www.emag.ro/laptop-other-air-14/pd/TESTSKU2/"),
+                ScraperService.parseListingPage(doc));
     }
 
     @Test
