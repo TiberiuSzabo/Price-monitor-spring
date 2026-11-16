@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  # The app exposes metrics on its management port, which is only reachable
+  # from inside the compose network.
+  - job_name: price-monitor
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["app:9001"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

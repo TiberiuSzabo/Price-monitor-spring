@@ -1,0 +1,29 @@
+groups:
+  - name: price-monitor
+    rules:
+      # More than 20% of product checks failed in the last 15 minutes.
+      # Usually means eMAG changed its markup (parse_error) or started
+      # blocking the scraper (blocked) - the `reason` label says which.
+      # With no checks in the window the ratio is NaN, which never fires.
+      - alert: ScrapeFailureRateHigh
+        expr: |
+          sum(increase(pricemonitor_scrape_failures_total[15m]))
+            /
+          sum(increase(pricemonitor_products_checked_total[15m]))
+            > 0.20
+        labels:
+          severity: warning
+        annotations:
+          summary: "Scrape failure rate is {{ $value | humanizePercentage }} over the last 15 minutes"
+          description: >-
+            More than 20% of product checks are failing. Break the failures down with
+            sum by (reason) (increase(pricemonitor_scrape_failures_total[15m])).
+
+      - alert: PriceMonitorDown
+        expr: up{job="price-monitor"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Price Monitor is not answering Prometheus scrapes"
+          description: "The app has been unreachable on its management port for 2 minutes."

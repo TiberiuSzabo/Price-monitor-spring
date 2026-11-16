@@ -14,17 +14,23 @@ public class PriceScheduler {
     private static final Logger log = LoggerFactory.getLogger(PriceScheduler.class);
 
     private final PriceService prices;
+    private final ScrapeMetrics metrics;
     private final long delayBetweenRequestsMs;
 
-    public PriceScheduler(PriceService prices,
+    public PriceScheduler(PriceService prices, ScrapeMetrics metrics,
                           @Value("${pricemonitor.delay-between-requests-ms:5000}") long delayBetweenRequestsMs) {
         this.prices = prices;
+        this.metrics = metrics;
         this.delayBetweenRequestsMs = delayBetweenRequestsMs;
     }
 
     @Scheduled(initialDelayString = "${pricemonitor.check-interval-ms:3600000}",
             fixedDelayString = "${pricemonitor.check-interval-ms:3600000}")
     public void checkAll() {
+        metrics.recordCycle(this::runCycle);
+    }
+
+    private void runCycle() {
         List<Product> tracked = prices.all();
         log.info("Checking prices for {} products", tracked.size());
 
@@ -43,6 +49,7 @@ public class PriceScheduler {
         if (failed > 0 && failed == tracked.size()) {
             log.error("Every product failed this round - eMAG may have changed its markup or blocked the scraper");
         }
+        log.info("Cycle finished: {} checked, {} failed", tracked.size(), failed);
     }
 
     private static boolean sleep(long ms) {

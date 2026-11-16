@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<!-- Hand-trimmed fixture that mirrors the structure of an eMAG product page:
+     the selectors the scraper relies on plus the noise that used to break it
+     (a second, unrelated price before the main one). Not a copy of a live page. -->
+<html lang="ro">
+<head>
+    <meta charset="utf-8">
+    <title>Laptop Test Book 15, Intel Core i5, 16GB, 512GB SSD - eMAG.ro</title>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": "Laptop Test Book 15, Intel Core i5, 16GB, 512GB SSD",
+      "sku": "TESTSKU1",
+      "offers": {
+        "@type": "Offer",
+        "price": "3499.99",
+        "priceCurrency": "RON",
+        "availability": "https://schema.org/InStock"
+      }
+    }
+    </script>
+</head>
+<body>
+<div class="main-container-outer">
+    <div class="page-header">
+        <h1 class="page-title">
+            Laptop Test Book 15, Intel Core i5, 16GB, 512GB SSD
+        </h1>
+    </div>
+
+    <!-- "frequently bought together" widget: a price that is NOT the product price -->
+    <div class="bundle-offers">
+        <p class="product-new-price">129<sup><small class="mf-decimal">,</small>90</sup> <span>Lei</span></p>
+    </div>
+
+    <div class="product-page-pricing">
+        <p class="rrp-lp30d"><span class="rrp-lp30d-content">PRP: <s>4.199,99 Lei</s></span></p>
+        <p class="product-new-price" data-test="main-price">3.499<sup><small class="mf-decimal">,</small>99</sup> <span>Lei</span></p>
+    </div>
+</div>
+</body>
+</html>

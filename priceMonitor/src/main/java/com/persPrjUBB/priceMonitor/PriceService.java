@@ -2,9 +2,11 @@ package com.persPrjUBB.priceMonitor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -18,13 +20,15 @@ public class PriceService {
     private final ProductRepository products;
     private final PricePointRepository pricePoints;
     private final Clock clock;
+    private final ScrapeMetrics metrics;
 
     public PriceService(ScraperService scraper, ProductRepository products,
-                        PricePointRepository pricePoints, Clock clock) {
+                        PricePointRepository pricePoints, Clock clock, ScrapeMetrics metrics) {
         this.scraper = scraper;
         this.products = products;
         this.pricePoints = pricePoints;
         this.clock = clock;
+        this.metrics = metrics;
     }
 
     @Transactional
@@ -52,7 +56,8 @@ public class PriceService {
 
     @Transactional(readOnly = true)
     public List<Product> all() {
-        return products.findAll();
+        // explicit order: without it the database returns rows in whatever order they sit on disk
+        return products.findAll(Sort.by("id"));
     }
 
     @Transactional(readOnly = true)
@@ -75,7 +80,7 @@ public class PriceService {
     private Product record(ScrapedProduct scraped) {
         Instant now = clock.instant();
         Product product = products.findByUrl(scraped.url()).orElseGet(() -> new Product(scraped.url()));
-        Double previous = product.getCurrentPrice();
+        BigDecimal previous = product.getCurrentPrice();
 
         product.setTitle(scraped.title());
         product.setCurrentPrice(scraped.price());
@@ -83,7 +88,9 @@ public class PriceService {
         product = products.save(product);
         pricePoints.save(new PricePoint(product, scraped.price(), now));
 
-        if (previous != null && previous.doubleValue() != scraped.price()) {
+        // compareTo, not equals: 3499.9 and 3499.90 are the same price (equals also compares scale)
+        if (previous != null && previous.compareTo(scraped.price()) != 0) {
+            metrics.priceChanged(previous, scraped.price());
             log.info("Price change for '{}': {} -> {} RON", product.getTitle(), previous, scraped.price());
         }
         return product;
