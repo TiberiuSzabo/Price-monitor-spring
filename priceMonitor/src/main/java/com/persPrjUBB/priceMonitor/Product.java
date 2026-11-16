@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -24,7 +25,9 @@ public class Product {
     @Column(length = 500)
     private String title;
 
-    private Double currentPrice;
+    // NUMERIC(12,2): exact decimal, never a binary floating-point value
+    @Column(precision = 12, scale = 2)
+    private BigDecimal currentPrice;
 
     private Instant lastChecked;
 

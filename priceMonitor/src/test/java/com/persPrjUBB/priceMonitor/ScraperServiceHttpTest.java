@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -51,7 +52,7 @@ class ScraperServiceHttpTest {
         ScrapedProduct product = scraper.scrapeProduct(emag.url(PRODUCT_PATH) + "?ref=sponsored&recid=abc");
 
         assertEquals("Laptop Test Book 15, Intel Core i5, 16GB, 512GB SSD", product.title());
-        assertEquals(3499.99, product.price(), 0.001);
+        assertEquals(new BigDecimal("3499.99"), product.price());
         assertEquals(emag.url(PRODUCT_PATH), product.url(), "tracking params are stripped before fetching");
         emag.verify(getRequestedFor(urlPathEqualTo(PRODUCT_PATH))
                 .withHeader("User-Agent", matching("Mozilla/5\\.0.*"))

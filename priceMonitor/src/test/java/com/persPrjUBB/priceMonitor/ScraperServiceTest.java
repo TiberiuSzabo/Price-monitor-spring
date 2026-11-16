@@ -3,10 +3,15 @@ package com.persPrjUBB.priceMonitor;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -26,7 +31,7 @@ class ScraperServiceTest {
         ScrapedProduct p = ScraperService.parseProductPage(doc, URL);
 
         assertEquals("Telefon mobil Test, 256GB", p.title());
-        assertEquals(6199.99, p.price(), 0.001);
+        assertEquals(new BigDecimal("6199.99"), p.price());
     }
 
     @Test
@@ -37,7 +42,7 @@ class ScraperServiceTest {
                 <p class="product-new-price" data-test="main-price">1.049<sup>,00</sup> Lei</p>
                 """);
 
-        assertEquals(1049.0, ScraperService.parseProductPage(doc, URL).price(), 0.001);
+        assertEquals(new BigDecimal("1049.00"), ScraperService.parseProductPage(doc, URL).price());
     }
 
     @Test
@@ -49,7 +54,19 @@ class ScraperServiceTest {
                 </script>
                 """);
 
-        assertEquals(2499.5, ScraperService.parseProductPage(doc, URL).price(), 0.001);
+        assertEquals(new BigDecimal("2499.50"), ScraperService.parseProductPage(doc, URL).price());
+    }
+
+    @Test
+    void jsonLdPriceWithoutDecimalsGetsTwo() {
+        Document doc = Jsoup.parse("""
+                <h1 class="page-title">Produs</h1>
+                <script type="application/ld+json">
+                {"@type": "Product", "offers": {"@type": "Offer", "price": 6199, "priceCurrency": "RON"}}
+                </script>
+                """);
+
+        assertEquals(new BigDecimal("6199.00"), ScraperService.parseProductPage(doc, URL).price());
     }
 
     @Test
@@ -67,7 +84,8 @@ class ScraperServiceTest {
         ScrapedProduct p = ScraperService.parseProductPage(doc, URL);
 
         assertEquals("Laptop Test Book 15, Intel Core i5, 16GB, 512GB SSD", p.title());
-        assertEquals(3499.99, p.price(), 0.001, "the main price, not the bundle price that comes first");
+        // superscript decimals: 3.499<sup><small>,</small>99</sup> - and not the bundle price that comes first
+        assertEquals(new BigDecimal("3499.99"), p.price());
     }
 
     @Test
@@ -96,12 +114,44 @@ class ScraperServiceTest {
                 ScraperService.parseListingPage(doc));
     }
 
+    // "." is always a thousands separator and "," always the decimal one. The expected value is
+    // compared with equals, so the scale is checked too: every parsed price has exactly two decimals.
+    @ParameterizedTest(name = "\"{0}\" -> {1}")
+    @CsvSource(delimiter = '|', value = {
+            "3.499,99 Lei        | 3499.99",
+            "6.199,00 Lei        | 6199.00",
+            "89,90 Lei           | 89.90",
+            "0,99 Lei            | 0.99",
+            "12.999 Lei          | 12999.00",
+            "45 Lei              | 45.00",
+            "3.499,9 Lei         | 3499.90",
+            "1.234.567,89 Lei    | 1234567.89",
+            "de la 3.499,99 Lei  | 3499.99",
+            "3.499,99Lei         | 3499.99",
+            "3.499,99 RON        | 3499.99",
+    })
+    void parsesRonFormats(String raw, BigDecimal expected) {
+        assertEquals(expected, ScraperService.parseRonPrice(raw));
+    }
+
+    @ParameterizedTest(name = "\"{0}\" is not a price")
+    @ValueSource(strings = {"Stoc epuizat", "", "Lei", ",", "."})
+    void textWithoutDigitsIsNotAPrice(String raw) {
+        assertNull(ScraperService.parseRonPrice(raw));
+    }
+
     @Test
-    void parsesRonFormats() {
-        assertEquals(6199.0, ScraperService.parseRonPrice("6.199,00 Lei"), 0.001);
-        assertEquals(89.9, ScraperService.parseRonPrice("89,90 Lei"), 0.001);
-        assertEquals(12999.0, ScraperService.parseRonPrice("12.999 Lei"), 0.001);
-        assertNull(ScraperService.parseRonPrice("Stoc epuizat"));
+    void nonBreakingSpaceBeforeCurrencyIsIgnored() {
+        assertEquals(new BigDecimal("3499.99"), ScraperService.parseRonPrice("3.499,99 Lei"));
+    }
+
+    @Test
+    void parsedPricesAddUpExactly() {
+        BigDecimal sum = ScraperService.parseRonPrice("0,10 Lei").add(ScraperService.parseRonPrice("0,20 Lei"));
+
+        assertEquals(new BigDecimal("0.30"), sum);
+        // the reason prices are not doubles: the same sum in binary floating point is 0.30000000000000004
+        assertNotEquals(0.30, 0.10 + 0.20);
     }
 
     @Test

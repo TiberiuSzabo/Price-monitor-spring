@@ -1,4 +1,6 @@
 package com.persPrjUBB.priceMonitor;
 
-public record ScrapedProduct(String url, String title, double price) {
+import java.math.BigDecimal;
+
+public record ScrapedProduct(String url, String title, BigDecimal price) {
 }

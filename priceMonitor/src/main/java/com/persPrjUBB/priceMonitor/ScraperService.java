@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -61,7 +63,7 @@ public class ScraperService {
                     "No product title on " + url + " - the page layout may have changed");
         }
 
-        Double price = null;
+        BigDecimal price = null;
         Element priceEl = doc.selectFirst("[data-test=main-price]");
         if (priceEl == null) {
             priceEl = doc.selectFirst(".product-new-price");
@@ -93,17 +95,23 @@ public class ScraperService {
         return List.copyOf(links);
     }
 
-    // "6.199,00 Lei" -> 6199.00
-    static Double parseRonPrice(String raw) {
+    // "6.199,00 Lei" -> 6199.00. Romanian format: "." groups thousands, "," starts the decimals.
+    // The digits go from text straight into a BigDecimal - no double anywhere on the way.
+    static BigDecimal parseRonPrice(String raw) {
         String digits = raw.replaceAll("[^0-9.,]", "").replace(".", "").replace(",", ".");
         if (digits.isEmpty() || digits.equals(".")) {
             return null;
         }
         try {
-            return Double.parseDouble(digits);
+            return toMoney(new BigDecimal(digits));
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    // every price in the app has exactly two decimals, matching the NUMERIC(12,2) column
+    private static BigDecimal toMoney(BigDecimal value) {
+        return value.setScale(2, RoundingMode.HALF_UP);
     }
 
     // listing links have long tracking params, without this the same product gets saved many times
@@ -124,13 +132,13 @@ public class ScraperService {
         return doc.selectFirst("[id*=captcha], [class*=captcha], iframe[src*=captcha]") != null;
     }
 
-    private static Double priceFromJsonLd(Document doc) {
+    private static BigDecimal priceFromJsonLd(Document doc) {
         for (Element script : doc.select("script[type=application/ld+json]")) {
             String json = script.data();
             if (json.contains("\"Product\"") && json.contains("\"offers\"")) {
                 Matcher m = JSON_LD_PRICE.matcher(json.substring(json.indexOf("\"offers\"")));
                 if (m.find()) {
-                    return Double.parseDouble(m.group(1));
+                    return toMoney(new BigDecimal(m.group(1)));
                 }
             }
         }

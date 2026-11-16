@@ -113,6 +113,9 @@ arbitrary sites.
 - **Discovery:** on a listing page it collects every `a.card-v2-title` link and strips the tracking
   query params, so the same product isn't stored twice.
 - **History:** every check adds a `price_point` row; `product` keeps the latest price.
+- **Money:** prices are `BigDecimal` in Java and `NUMERIC(12,2)` in PostgreSQL, parsed from the page
+  text without ever passing through a `double`, and compared with `compareTo` so `3499.9` and
+  `3499.90` count as the same price. In JSON they are still plain numbers (`6399.99`).
 - **Scheduler:** `PriceScheduler` re-checks all products every hour (configurable), with a pause
   between requests so the site isn't hammered.
 - **Failure classification:** every failed check gets a reason — `timeout`, `blocked` (HTTP 403/429
@@ -148,7 +151,12 @@ PostgreSQL, with the schema owned by **Flyway** (`priceMonitor/src/main/resource
 Hibernate runs with `ddl-auto=validate`: it never changes the schema, it only checks at startup that
 the entities still match it.
 
-To change the schema, add a new file (`V2__add_something.sql`) — never edit one that has been applied.
+| Migration | What it does |
+| --- | --- |
+| `V1__baseline_schema.sql` | `product` and `price_point` tables, as Hibernate used to generate them |
+| `V2__prices_as_numeric.sql` | Price columns from `DOUBLE PRECISION` to `NUMERIC(12,2)`, converting existing rows in place |
+
+To change the schema, add a new file (`V3__add_something.sql`) — never edit one that has been applied.
 The tests apply the same migrations to H2, so a migration that doesn't match the entities fails the build.
 
 ## Observability
@@ -214,8 +222,10 @@ No test talks to eMAG:
 - **HTTP layer** — `ScraperServiceHttpTest` starts a local **WireMock** server that plays eMAG: it
   serves the saved pages, returns 403/429/5xx, serves a captcha page and delays a response past the
   timeout, then checks both the failure reason and the metric that moved.
-- **Price-change detection** — `PriceServiceTest` (drop, increase, unchanged, first sighting) on
-  in-memory H2 with the real Flyway migration.
+- **Price-change detection** — `PriceServiceTest` (drop, increase, unchanged, first sighting, a
+  one-cent change, the same price written with a different scale) on in-memory H2 with the real
+  Flyway migrations.
+- **API contract** — `ScraperControllerTest` checks that prices are serialized as JSON numbers.
 - **Scheduler** — `PriceSchedulerTest` (one failing product doesn't stop the cycle; cycles are timed).
 
 ## CI/CD
@@ -274,4 +284,3 @@ Both are the provisioned *Price Monitor* dashboard after tracking 10 real eMAG p
 
 - Email alert when a price drops under a target (JavaMailSender)
 - Alertmanager, so the Prometheus alerts are actually delivered
-- Store prices as `NUMERIC` / `BigDecimal` instead of `double`

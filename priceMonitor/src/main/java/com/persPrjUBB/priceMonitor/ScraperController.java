@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
@@ -22,13 +23,14 @@ public class ScraperController {
 
     public record TrackRequest(String url) {}
 
-    public record ProductDto(Long id, String title, Double currentPrice, Instant lastChecked, String url) {
+    // BigDecimal is written as a plain JSON number (6399.99), same as before
+    public record ProductDto(Long id, String title, BigDecimal currentPrice, Instant lastChecked, String url) {
         static ProductDto of(Product p) {
             return new ProductDto(p.getId(), p.getTitle(), p.getCurrentPrice(), p.getLastChecked(), p.getUrl());
         }
     }
 
-    public record PricePointDto(double price, Instant checkedAt) {
+    public record PricePointDto(BigDecimal price, Instant checkedAt) {
         static PricePointDto of(PricePoint p) {
             return new PricePointDto(p.getPrice(), p.getCheckedAt());
         }

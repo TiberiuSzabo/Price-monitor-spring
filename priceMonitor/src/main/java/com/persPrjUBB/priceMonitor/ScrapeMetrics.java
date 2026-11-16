@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -64,8 +65,8 @@ public class ScrapeMetrics {
         failures.get(reason).increment();
     }
 
-    public void priceChanged(double previous, double current) {
-        (current < previous ? priceDrops : priceIncreases).increment();
+    public void priceChanged(BigDecimal previous, BigDecimal current) {
+        (current.compareTo(previous) < 0 ? priceDrops : priceIncreases).increment();
     }
 
     public void recordCycle(Runnable cycleRun) {

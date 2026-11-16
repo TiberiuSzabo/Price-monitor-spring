@@ -27,8 +27,8 @@ Things noticed that affect the work:
 - `mvnw` shows as modified only because Windows dropped the executable bit; it is left out of commits.
 - Scrape failures carry no cause, so a `reason` tag needs a small change to `ScrapeException`.
 - Nothing can start a scrape cycle on demand, which makes the pipeline hard to demo or verify.
-- Prices are stored as `double`. Money should be `NUMERIC`/`BigDecimal`; left alone here because it is a
-  domain change, not a DevOps one.
+- Prices are stored as `double`. Money should be `NUMERIC`/`BigDecimal`; left out of the DevOps phases
+  because it is a domain change. Done afterwards in its own commit (`V2__prices_as_numeric.sql`).
 
 ## What will be done
 
